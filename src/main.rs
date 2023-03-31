@@ -3,31 +3,40 @@
 
 // pick a panicking behavior
 use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch panics
-// use panic_abort as _; // requires nightly
-// use panic_itm as _; // logs messages over ITM; requires ITM support
-// use panic_semihosting as _; // logs messages to the host stderr; requires a debugger
+                     // use panic_abort as _; // requires nightly
+                     // use panic_itm as _; // logs messages over ITM; requires ITM support
+                     // use panic_semihosting as _; // logs messages to the host stderr; requires a debugger
 
 use cortex_m::asm;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use mk02f12810;
-// use mk02f12810::{PIT, PORTA, PTA};
 
 #[entry]
 fn main() -> ! {
     asm::nop(); // To not have main optimize to abort in release mode, remove when you add code
     hprintln!("Hello, world!").unwrap();
 
-    // let cp = cortex_m::Peripherals::take().unwrap(); // This will work only once!
+    let p = mk02f12810::Peripherals::take().unwrap();
 
-    let peripherals = mk02f12810::Peripherals::take().unwrap();
+    let sim = p.SIM;
+    let pta = p.PTA;
+    let porta = p.PORTA;
 
-    let pta = peripherals.PTA;
-    // pta.pddr.write(f)
+    // Enable PORTA clock
+    sim.scgc5.write(|w| w.porta().set_bit());
 
-    // let peri = mk02f12810::Peripherals::take().unwrap();
+    // Set pin 1 of PORTA to output
+    pta.pddr.write(|w| unsafe { w.bits(1_u32 << 1) });
+
+    // Set pin 1 of PORTA mux to GPIO
+    porta.pcr[1].modify(|r, w| unsafe { w.bits((r.bits() & !0xF00) | (1_u32 << 8)) });
+
+    // Toggle led
+    pta.pdor
+        .modify(|r, w| unsafe { w.bits(r.bits() ^ (1_u32 << 1)) });
 
     loop {
-        // your code goes here
+        // Put code here
     }
 }
